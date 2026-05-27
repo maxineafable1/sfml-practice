@@ -5,7 +5,6 @@
 int main()
 {
 	sf::RenderWindow window(sf::VideoMode(800, 600), "My Window!");
-	window.setFramerateLimit(60);
 
 	// get the size of the window
 	sf::Vector2u size = window.getSize();
@@ -19,8 +18,12 @@ int main()
 
 	window.setPosition(sf::Vector2i(centerX, centerY));
 
+	// full size image sprite
+	int frameWidth = 960 / 3;
+	int frameHeight = 320;
+
 	sf::Texture texture;
-	if (!texture.loadFromFile("assets/knight.png"))
+	if (!texture.loadFromFile("assets/save-knight-with-walk.png"))
 	{
 		std::cout << "Could not load texture\n";
 		return 1;
@@ -28,18 +31,30 @@ int main()
 
 	sf::Sprite sprite;
 	sprite.setTexture(texture);
+	sprite.setTextureRect(sf::IntRect({
+										  0,
+										  0,
+									  },
+									  {frameWidth, frameHeight}));
+
+	float sprite_speed = 0.25f;
+	sf::Clock clock;
 
 	sprite.setScale(sf::Vector2f(0.35f, 0.35f));
 
 	sf::FloatRect spriteBounds = sprite.getLocalBounds();
-	sprite.setOrigin(spriteBounds.width / 2.f, spriteBounds.height / 2.f);
+	sprite.setOrigin({spriteBounds.width / 2.f, spriteBounds.height / 2.f});
 
 	sprite.setPosition(sf::Vector2f(400.f, 300.f));
 
-	float speed = 5.f;
+	float speed = 300.f;
+
+	float sprite_animation_timer = 0.f;
 
 	while (window.isOpen())
 	{
+		float delta_time = clock.restart().asSeconds();
+
 		sf::Event event;
 		while (window.pollEvent(event))
 		{
@@ -76,21 +91,52 @@ int main()
 		}
 
 		sf::Vector2f movement(0.f, 0.f);
+		bool is_move = false;
 
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-			movement.y -= speed;
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-			movement.y += speed;
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::A))
+		{
+			sprite.setScale({-0.35f, 0.35f});
+			is_move = true;
 			movement.x -= speed;
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+		}
+		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::D))
+		{
+			sprite.setScale({0.35f, 0.35f});
+			is_move = true;
 			movement.x += speed;
+		}
 
-		float length = std::sqrt(movement.x * movement.x + movement.y * movement.y);
-		if (length != 0.f)
-			movement = (movement / length) * speed;
+		sprite_animation_timer += delta_time;
 
-		sprite.move(movement);
+		if (is_move)
+		{
+			if (sprite_animation_timer >= sprite_speed)
+			{
+				sprite_animation_timer = 0.f;
+
+				int current_left = sprite.getTextureRect().left;
+				int next_left = current_left + frameWidth;
+
+				if (next_left >= (frameWidth * 3))
+					next_left = 0;
+
+				sprite.setTextureRect(sf::IntRect(
+					{
+						next_left,
+						0,
+					},
+					{frameWidth, frameHeight}));
+			}
+		}
+		else
+			sprite.setTextureRect(sf::IntRect(
+				{
+					0,
+					0,
+				},
+				{frameWidth, frameHeight}));
+
+		sprite.move(movement * delta_time);
 		window.clear(sf::Color::White);
 
 		window.draw(sprite);
