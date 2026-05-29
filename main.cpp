@@ -2,9 +2,23 @@
 #include <iostream>
 #include <cmath>
 
+const int TILE_SIZE = 16;
+const int WINDOW_WIDTH = 800;
+const int WINDOW_HEIGHT = 600;
+
+const int MAP_WIDTH = WINDOW_WIDTH / TILE_SIZE;
+// const int MAP_HEIGHT = WINDOW_HEIGHT / TILE_SIZE;
+const int MAP_HEIGHT = 38;
+
+enum TileType
+{
+	AIR = 0,
+	DIRT = 1
+};
+
 int main()
 {
-	sf::RenderWindow window(sf::VideoMode(800, 600), "My Window!");
+	sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "My Window!");
 
 	// get the size of the window
 	sf::Vector2u size = window.getSize();
@@ -19,14 +33,65 @@ int main()
 	window.setPosition(sf::Vector2i(centerX, centerY));
 
 	// full size image sprite
-	int frameWidth = 960 / 3;
-	int frameHeight = 320;
+	int frameWidth = 48 / 3;
+	int frameHeight = 16;
 
 	sf::Texture texture;
-	if (!texture.loadFromFile("assets/save-knight-with-walk.png"))
+	if (!texture.loadFromFile("assets/knight.png"))
 	{
 		std::cout << "Could not load texture\n";
 		return 1;
+	}
+	texture.setSmooth(false);
+
+	sf::Texture dirt_texture;
+	if (!dirt_texture.loadFromFile("assets/concrete.png"))
+	{
+		std::cout << "Could not load dirt texture\n";
+		return 1;
+	}
+	dirt_texture.setSmooth(false);
+
+	std::vector<std::vector<int>> map(MAP_WIDTH, std::vector<int>(MAP_HEIGHT, AIR));
+	int groundLevel = MAP_HEIGHT / 2;
+
+	for (int x = 0; x < MAP_WIDTH; ++x)
+	{
+		for (int y = 0; y < MAP_HEIGHT; ++y)
+		{
+			if (y >= groundLevel)
+				map[x][y] = DIRT;
+			else
+				map[x][y] = AIR;
+		}
+	}
+
+	sf::VertexArray va(sf::Quads);
+
+	for (int x = 0; x < MAP_WIDTH; ++x)
+	{
+		for (int y = 0; y < MAP_HEIGHT; ++y)
+		{
+			if (map[x][y] == AIR)
+				continue;
+
+			sf::Vertex quad[4];
+
+			quad[0].position = sf::Vector2f(x * TILE_SIZE, y * TILE_SIZE);
+			quad[1].position = sf::Vector2f((x + 1) * TILE_SIZE, y * TILE_SIZE);
+			quad[2].position = sf::Vector2f((x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE);
+			quad[3].position = sf::Vector2f(x * TILE_SIZE, (y + 1) * TILE_SIZE);
+
+			quad[0].texCoords = sf::Vector2f(0, 0);
+			quad[1].texCoords = sf::Vector2f(TILE_SIZE, 0);
+			quad[2].texCoords = sf::Vector2f(TILE_SIZE, TILE_SIZE);
+			quad[3].texCoords = sf::Vector2f(0, TILE_SIZE);
+
+			va.append(quad[0]);
+			va.append(quad[1]);
+			va.append(quad[2]);
+			va.append(quad[3]);
+		}
 	}
 
 	sf::Sprite sprite;
@@ -40,12 +105,18 @@ int main()
 	float sprite_speed = 0.25f;
 	sf::Clock clock;
 
-	sprite.setScale(sf::Vector2f(0.35f, 0.35f));
+	float groundYPixel = groundLevel * TILE_SIZE;
+	// float scaledSpriteHeight = frameHeight * sprite.getScale().y;
+	// float characterFeetY = groundYPixel - scaledSpriteHeight;
 
 	sf::FloatRect spriteBounds = sprite.getLocalBounds();
-	sprite.setOrigin({spriteBounds.width / 2.f, spriteBounds.height / 2.f});
+	sprite.setOrigin({spriteBounds.width / 2.f, spriteBounds.height});
 
-	sprite.setPosition(sf::Vector2f(400.f, 300.f));
+	// sprite.setPosition(sf::Vector2f(WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f));
+	sprite.setPosition(sf::Vector2f(WINDOW_WIDTH / 2.f, groundYPixel));
+
+	sprite.setScale(sf::Vector2f(2.f, 2.f));
+
 
 	float speed = 300.f;
 
@@ -95,13 +166,13 @@ int main()
 
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::A))
 		{
-			sprite.setScale({-0.35f, 0.35f});
+			sprite.setScale({-2.f, 2.f});
 			is_move = true;
 			movement.x -= speed;
 		}
 		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::D))
 		{
-			sprite.setScale({0.35f, 0.35f});
+			sprite.setScale({2.f, 2.f});
 			is_move = true;
 			movement.x += speed;
 		}
@@ -137,7 +208,11 @@ int main()
 				{frameWidth, frameHeight}));
 
 		sprite.move(movement * delta_time);
-		window.clear(sf::Color::White);
+		// window.clear(sf::Color::White);
+		window.clear(sf::Color(135, 206, 235)); // Sky Blue
+
+		// window.draw(va, states);
+		window.draw(va, &dirt_texture);
 
 		window.draw(sprite);
 
