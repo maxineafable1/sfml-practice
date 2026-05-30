@@ -7,8 +7,7 @@ const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
 
 const int MAP_WIDTH = WINDOW_WIDTH / TILE_SIZE;
-// const int MAP_HEIGHT = WINDOW_HEIGHT / TILE_SIZE;
-const int MAP_HEIGHT = 38;
+const int MAP_HEIGHT = std::ceil(static_cast<float>(WINDOW_HEIGHT) / TILE_SIZE);
 
 enum TileType
 {
@@ -117,14 +116,23 @@ int main()
 
 	sprite.setScale(sf::Vector2f(2.f, 2.f));
 
-
 	float speed = 300.f;
 
 	float sprite_animation_timer = 0.f;
 
+	// for player jump settings
+	sf::Vector2f velocity(0.f, 0.f);
+	const float GRAVITY = 1000.f;
+	const float JUMP_FORCE = -500.f;
+
 	while (window.isOpen())
 	{
 		float delta_time = clock.restart().asSeconds();
+
+		sf::Vector2f movement(0.f, 0.f);
+
+		bool is_move = false;
+		bool is_ground = true;
 
 		sf::Event event;
 		while (window.pollEvent(event))
@@ -138,8 +146,11 @@ int main()
 			{
 				if (event.key.scancode == sf::Keyboard::Scan::Space)
 				{
-					std::cout << "hello test code: " << event.key.scancode << '\n';
-					std::cout << "description: " << sf::Keyboard::getDescription(event.key.scancode).toAnsiString() << '\n';
+					if (is_ground && (velocity.y == 0))
+					{
+						velocity.y = JUMP_FORCE;
+						is_ground = false;
+					}
 				}
 				break;
 			}
@@ -161,8 +172,8 @@ int main()
 			}
 		}
 
-		sf::Vector2f movement(0.f, 0.f);
-		bool is_move = false;
+		velocity.y += GRAVITY * delta_time;
+		movement.y = velocity.y;
 
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scan::A))
 		{
@@ -177,6 +188,7 @@ int main()
 			movement.x += speed;
 		}
 
+		// ANIMATION
 		sprite_animation_timer += delta_time;
 
 		if (is_move)
@@ -208,16 +220,37 @@ int main()
 				{frameWidth, frameHeight}));
 
 		sprite.move(movement * delta_time);
-		// window.clear(sf::Color::White);
+
+		// Find out which grid tile the player's feet are currently occupying
+		int player_grid_x = static_cast<int>(sprite.getPosition().x / TILE_SIZE);
+		int player_grid_y = static_cast<int>(sprite.getPosition().y / TILE_SIZE);
+
+		if (player_grid_x >= 0 && player_grid_x < MAP_WIDTH &&
+			player_grid_y >= 0 && player_grid_y < MAP_HEIGHT)
+		{
+			if (map[player_grid_x][player_grid_y] == DIRT)
+			{
+				velocity.y = 0.f;
+				is_ground = true;
+
+				float player_after_jump_y = player_grid_y * TILE_SIZE;
+				sprite.setPosition(sf::Vector2f(sprite.getPosition().x, player_after_jump_y));
+			}
+			else
+				is_ground = false;
+		}
+
+		if (sprite.getPosition().x > WINDOW_WIDTH)
+			sprite.setPosition(sf::Vector2f(static_cast<float>(WINDOW_WIDTH - 1.f), sprite.getPosition().y));
+		else if (sprite.getPosition().x < 0)
+			sprite.setPosition(sf::Vector2f(0.f, sprite.getPosition().y));
+
 		window.clear(sf::Color(135, 206, 235)); // Sky Blue
 
-		// window.draw(va, states);
 		window.draw(va, &dirt_texture);
-
 		window.draw(sprite);
 
 		window.display();
 	}
-
 	return 0;
 }
